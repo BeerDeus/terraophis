@@ -11,58 +11,124 @@
 
     <nav class="admin-nav">
         <div class="logo">TERRAOPHIS <span style="font-size: 0.7rem; color: #888;">PANEL ADMIN</span></div>
-        <button id="btnLogout" class="btn-outline">Déconnexion</button>
+        
+        <div class="admin-tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-stocks', this)">Stocks</button>
+            <button class="tab-btn" onclick="switchTab('tab-commandes', this)">Commandes</button>
+            <button class="tab-btn" onclick="switchTab('tab-affichage', this)">Affichage</button>
+            <button class="tab-btn" onclick="switchTab('tab-guides', this)">Guides</button>
+        </div>
+
+        <button id="btnLogout" class="btn-logout">Déconnexion</button>
     </nav>
 
     <main class="admin-container">
-        <section class="admin-section">
-            <h2>Ajouter un nouvel insecte</h2>
-            <form id="productForm" class="product-form">
-                <div class="form-group">
-                    <input type="text" name="name" placeholder="Nom commun (ex: Mante Orchidée)" required>
-                    <input type="text" name="latinName" placeholder="Nom latin (ex: Hymenopus coronatus)" required>
+        
+        <div id="tab-stocks" class="tab-content">
+            <section class="admin-section">
+                <h2>Ajouter un nouvel insecte</h2>
+                <form id="productForm" class="product-form">
+                    <div class="form-group">
+                        <input type="text" name="name" placeholder="Nom commun (ex: Mante Orchidée)" required>
+                        <input type="text" name="latinName" placeholder="Nom latin (ex: Hymenopus coronatus)" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="number" name="price" placeholder="Prix (€)" step="0.01" required>
+                        <input type="number" name="stock" placeholder="Quantité en stock" required>
+                    </div>
+                    <div class="form-group">
+                        <select name="category" required>
+                            <option value="" disabled selected>Choisir une catégorie...</option>
+                            <option value="cloportes">Isopodes (Cloportes)</option>
+                            <option value="iules">Iules</option>
+                            <option value="coleopteres">Coléoptères</option>
+                            <option value="mantes">Mantes</option>
+                            <option value="phasmes">Phasmes</option>
+                            <option value="accessoires">Accessoires</option>
+                        </select>
+                        <select name="difficulty" required>
+                            <option value="" disabled selected>Difficulté...</option>
+                            <option value="debutant">Débutant</option>
+                            <option value="intermediaire">Intermédiaire</option>
+                            <option value="expert">Expert</option>
+                        </select>
+                    </div>
+                    <textarea name="description" placeholder="Description de l'espèce et conseils d'élevage..." rows="5" required></textarea>
+                    <div class="file-input-area">
+                        <label for="productFiles">Photos du produit (Max 5)</label>
+                        <input type="file" id="productFiles" multiple accept="image/*">
+                    </div>
+                    <button type="submit" id="btnSubmit" class="btn-buy">PUBLIER LE PRODUIT</button>
+                    <p id="uploadStatus"></p>
+                </form>
+            </section>
+
+            <section class="admin-section">
+                <h2>Inventaire actuel</h2>
+                <div id="adminInventory" class="inventory-list"></div>
+            </section>
+        </div>
+
+        <div id="tab-commandes" class="tab-content" style="display:none;">
+            <section class="admin-section">
+                <h2>Commandes Récentes</h2>
+                <div id="adminOrders" class="inventory-list"></div>
+            </section>
+        </div>
+
+        <div id="tab-affichage" class="tab-content" style="display:none;">
+            <section class="admin-section">
+                <h2>Gestion du Hero Slider (Accueil)</h2>
+                <div id="sliderPreview" class="admin-img-preview-grid"></div>
+                <form id="sliderForm" class="product-form">
+                    <div class="file-input-area">
+                        <label for="sliderFiles">Ajouter des photos au slider (1920x800)</label>
+                        <input type="file" id="sliderFiles" multiple accept="image/*">
+                    </div>
+                    <button type="submit" id="btnSubmitSlider" class="btn-buy">AJOUTER AU SLIDER</button>
+                    <p id="sliderUploadStatus"></p>
+                </form>
+            </section>
+
+            <section class="admin-section">
+                <h2>Gestion de la Grille "Features" (Accueil)</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                    <div>
+                        <h3>Boutique (4 images)</h3>
+                        <div id="boutiquePreview" class="admin-img-preview-grid mini"></div>
+                        <form id="boutiqueGridForm" class="product-form">
+                            <input type="file" id="boutiqueFiles" multiple accept="image/*" required>
+                            <button type="submit" class="btn-buy" style="margin-top:10px;">REMPLACER LES 4 IMAGES</button>
+                        </form>
+                    </div>
+                    <div>
+                        <h3>Conseils (4 images)</h3>
+                        <div id="conseilPreview" class="admin-img-preview-grid mini"></div>
+                        <form id="conseilGridForm" class="product-form">
+                            <input type="file" id="conseilFiles" multiple accept="image/*" required>
+                            <button type="submit" class="btn-buy" style="margin-top:10px;">REMPLACER LES 4 IMAGES</button>
+                        </form>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <input type="number" name="price" placeholder="Prix (€)" step="0.01" required>
-                    <input type="number" name="stock" placeholder="Quantité en stock" required>
-                </div>
+            </section>
+        </div>
 
-                <div class="form-group">
-                    <select name="category" required>
-                        <option value="" disabled selected>Catégorie...</option>
-                        <option value="mantes">Mantes</option>
-                        <option value="cloportes">Cloportes</option>
-                        <option value="phasmes">Phasmes</option>
-                        <option value="accessoires">Accessoires</option>
-                    </select>
-                    <select name="difficulty" required>
-                        <option value="" disabled selected>Difficulté...</option>
-                        <option value="debutant">Débutant</option>
-                        <option value="intermediaire">Intermédiaire</option>
-                        <option value="expert">Expert</option>
-                    </select>
-                </div>
+        <div id="tab-guides" class="tab-content" style="display:none;">
+            <section class="admin-section">
+                <h2>Rédiger une fiche conseil</h2>
+                <form id="guideForm" class="product-form">
+                    <input type="text" name="guideTitle" placeholder="Titre de la fiche" required>
+                    <textarea name="guideContent" placeholder="Contenu du guide..." rows="8" required></textarea>
+                    <div class="file-input-area">
+                        <label for="guideFile">Image d'illustration</label>
+                        <input type="file" id="guideFile" accept="image/*">
+                    </div>
+                    <button type="submit" id="btnSubmitGuide" class="btn-buy">PUBLIER LA FICHE</button>
+                    <p id="guideUploadStatus"></p>
+                </form>
+            </section>
+        </div>
 
-                <textarea name="description" placeholder="Description de l'espèce et conseils d'élevage..." rows="5" required></textarea>
-
-                <div class="file-input-area">
-                    <label for="productFiles">Photos du produit (Max 5)</label>
-                    <input type="file" id="productFiles" multiple accept="image/*" required>
-                </div>
-
-                <button type="submit" id="btnSubmit" class="btn-buy">PUBLIER LE PRODUIT</button>
-                <p id="uploadStatus" style="font-size: 0.8rem; margin-top: 10px;"></p>
-            </form>
-        </section>
-
-        <hr style="border: 0; border-top: 1px solid #ddd; margin: 40px 0;">
-
-        <section class="admin-section">
-            <h2>Inventaire actuel</h2>
-            <div id="adminInventory" class="inventory-list">
-                </div>
-        </section>
     </main>
 
     <script type="module" src="admin.js"></script>

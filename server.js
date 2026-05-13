@@ -177,7 +177,11 @@ app.post('/api/free-order', async (req, res) => {
 app.use(cors()); 
 app.use(express.json()); // <--- Le Webhook doit impérativement être au dessus de cette ligne
 const path = require('path');
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+
+app.get('/produit', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'produit.html'));
+});
 
 // NOUVEAU : Création de la session de paiement
 /*app.post('/api/create-checkout-session', async (req, res) => {

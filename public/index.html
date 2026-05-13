@@ -9,27 +9,7 @@
 </head>
 <body class="beige-theme">
 
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo-area">
-                <img src="assets/img/logo_rect.png" alt="Terraophis" class="main-logo">
-            </div>
-            
-            <ul class="nav-links">
-                <li><a href="#home" class="active">ACCUEIL</a></li>
-                <li class="dropdown">
-                    <a href="#boutique">BOUTIQUE ▾</a>
-                </li>
-                <li><a href="#conseils">CONSEILS & GUIDE</a></li>
-                <li><a href="#propos">À PROPOS</a></li>
-            </ul>
-
-            <div class="nav-icons">
-                <a href="#panier" class="cart-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                </a>
-            </div>
-        </div>
+    <nav class="navbar" id="main-navbar">
     </nav>
 
     <header class="hero-slider">
@@ -50,22 +30,29 @@
 
     <main class="container">
         <section class="features-grid">
-            <div class="feature-card boutique-card">
+            <div class="feature-card" id="boutique-feature">
+                <img src="assets/img/placeholder.jpg" alt="">
+                <img src="assets/img/placeholder.jpg" alt="">
+                <img src="assets/img/placeholder.jpg" alt="">
+                <img src="assets/img/placeholder.jpg" alt="">
                 <div class="feature-overlay">
-                    <a href="#boutique" class="btn-feature">Boutique</a>
+                    <h2>Boutique Animalerie</h2>
                 </div>
+                    <a href="boutique" class="btn-explorer">Explorer</a>
             </div>
-            <div class="feature-card conseils-card">
+            <div class="feature-card" id="conseil-feature">
+                <img src="assets/img/placeholder.jpg" alt="">
+                <img src="assets/img/placeholder.jpg" alt="">
+                <img src="assets/img/placeholder.jpg" alt="">
+                <img src="assets/img/placeholder.jpg" alt="">
                 <div class="feature-overlay">
-                    <a href="#conseils" class="btn-feature">Conseil et Guide</a>
+                    <h2>Conseil et Guide</h2>
                 </div>
+                    <a href="#conseils" class="btn-explorer">Explorer</a>
             </div>
-        </section>
-
-        <section id="boutique" class="products-section">
-            <div id="productGrid" class="product-grid"></div>
         </section>
     </main>
+    <footer id="main-footer"></footer>
 
     <script type="module" src="app.js"></script>
 </body>
