@@ -311,7 +311,6 @@ async function loadFeaturesGrid() {
 }
 
 
-// Fonction pour charger la barre de navigation commune
 async function loadNavbar() {
     const navElement = document.getElementById('main-navbar');
     if (!navElement) return;
@@ -321,7 +320,6 @@ async function loadNavbar() {
         const html = await response.text();
         navElement.innerHTML = html;
 
-        // Optionnel : Gérer la classe 'active' selon la page actuelle
         const currentPage = window.location.pathname;
         const links = navElement.querySelectorAll('.nav-links a');
         links.forEach(link => {
@@ -330,6 +328,26 @@ async function loadNavbar() {
                 link.classList.add('active');
             }
         });
+
+        const hamburgerBtn = navElement.querySelector('#hamburger-btn');
+        const navLinks = navElement.querySelector('#nav-links');
+
+        if (hamburgerBtn && navLinks) {
+            hamburgerBtn.addEventListener('click', () => {
+                navLinks.classList.toggle('open');
+                hamburgerBtn.classList.toggle('active');
+            });
+        }
+
+        dropdowns.forEach(dropdown => {
+            dropdown.addEventListener('click', (e) => {
+                // Sur mobile, cliquer sur "BOUTIQUE" ouvre le sous-menu au lieu de rediriger direct
+                if (window.innerWidth <= 768) {
+                    dropdown.classList.toggle('active-mobile');
+                }
+            });
+        });
+
     } catch (error) {
         console.error("Erreur lors du chargement de la navbar :", error);
     }
@@ -358,8 +376,45 @@ async function loadFooter() {
         console.error("Erreur chargement footer :", error);
     }
 }
+// Fonction pour charger la galerie (Simulée pour l'instant)
+async function loadInstaGallery() {
+    const feed = document.getElementById('instafeed');
+    if (!feed) return;
+
+    // REMPLACE par ton URL générée sur Behold.so
+    const BEHOLD_API_URL = "https://behold.so/api/v1/posts?api_key=TON_CLE_ICI";
+
+    try {
+        const response = await fetch(BEHOLD_API_URL);
+        
+        if (!response.ok) throw new Error("Erreur lors de la récupération Instagram");
+        
+        const posts = await response.json();
+        
+        // On ne garde que les 4 premiers pour la grille
+        const lastFour = posts.slice(0, 4);
+
+        feed.innerHTML = lastFour.map(post => `
+            <div class="insta-item">
+                <a href="${post.permalink}" target="_blank">
+                    <img src="${post.media_url}" alt="Post Terraophis" loading="lazy">
+                </a>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error("Erreur Galerie Instagram :", error);
+        // Fallback : on affiche des images par défaut ou un message si l'API échoue
+        feed.innerHTML = `
+            <div class="insta-placeholder" style="grid-column: 1/-1; padding: 20px; opacity: 0.5;">
+                Impossible de charger le flux Instagram pour le moment.
+            </div>
+        `;
+    }
+}
 
 // On lance les fonctions
+loadInstaGallery();
 loadFooter();
 loadFeaturesGrid();
 loadHeroSlider();

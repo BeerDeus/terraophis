@@ -214,7 +214,6 @@ body.beige-theme {
 /* NOUVEAU : Styles pour le menu déroulant (Dropdown) */
 .dropdown {
     position: relative;
-    padding-bottom: 20px; /* Évite que le menu se ferme si on bouge un peu la souris */
     margin-bottom: -20px;
 }
 
@@ -609,4 +608,255 @@ footer {
     font-size: 0.65rem;
     letter-spacing: 2px;
     opacity: 0.5;
+}
+
+/* --- SECTION INSTAGRAM --- */
+.instagram-section {
+    padding: 60px 0;
+    text-align: center;
+}
+
+.insta-header {
+    margin-bottom: 40px;
+}
+
+.insta-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: #4d5d30; /* Le VERT du logo */
+    margin: 0;
+}
+
+.insta-handle {
+    display: inline-block;
+    color: #4e3524; /* Le BRUN du logo */
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: 2px;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    border-bottom: 1px solid rgba(78, 53, 36, 0.3);
+    transition: opacity 0.3s;
+}
+
+.insta-handle:hover { opacity: 0.7; }
+
+/* Grille de 4 images */
+.insta-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.insta-item {
+    position: relative;
+    overflow: hidden;
+    aspect-ratio: 1 / 1; /* Carré parfait */
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+
+.insta-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+/* Effet au survol : léger zoom */
+.insta-item:hover img {
+    transform: scale(1.1);
+}
+
+
+
+
+
+
+
+/* ========================================= */
+/* NOUVEAU: STYLES RESPONSIVE (MOBILE & TAB) */
+/* ========================================= */
+
+/* Cacher le hamburger sur PC */
+@media (min-width: 769px) {
+    .hamburger-btn {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    /* --- NAVBAR & MENU HAMBURGER --- */
+    .nav-container {
+        padding: 0 20px;
+    }
+
+    .hamburger-btn {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        width: 30px;
+        height: 25px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        z-index: 1002; /* Au-dessus du menu */
+        margin-left: auto;
+        margin-right: 20px;
+    }
+
+    .hamburger-btn span {
+        width: 100%;
+        height: 3px;
+        background: var(--accent-brown);
+        border-radius: 5px;
+        transition: all 0.3s linear;
+    }
+
+    /* NOUVEAU: Centrage ajusté pour une croix géométrique parfaite */
+    .hamburger-btn.active span:nth-child(1) { transform: translateY(11px) rotate(45deg); }
+    .hamburger-btn.active span:nth-child(2) { opacity: 0; }
+    .hamburger-btn.active span:nth-child(3) { transform: translateY(-11px) rotate(-45deg); }
+
+    .nav-links {
+        position: fixed;
+        /* S'ajuste dynamiquement sous la navbar. ~80px selon ta hauteur de header */
+        top: 85px; 
+        right: -100%; /* Caché par défaut */
+        width: 100%;
+        height: calc(100vh - 85px); /* Prend le reste de la page */
+        background-color: var(--primary-beige);
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding-top: 50px;
+        transition: right 0.4s ease-in-out;
+        z-index: 1001;
+        overflow-y: auto;
+    }
+
+    .nav-links.open {
+        right: 0; /* Fait glisser le menu dans la vue */
+    }
+
+    .nav-links li {
+        margin: 15px 0;
+        font-size: 1.2rem;
+    }
+
+    .nav-icons {
+        margin-left: 0;
+    }
+
+    /* NOUVEAU : Centrer et mettre en valeur le titre parent "BOUTIQUE" */
+    .dropdown {
+        width: 100%;
+        text-align: center;
+    }
+
+    .dropdown > a {
+        font-size: 1.5rem;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    /* Menu Boutique toujours ouvert et fusionné sur mobile */
+    .dropdown-content {
+        position: static;
+        display: block !important; 
+        box-shadow: none;
+        border: none;
+        background: transparent;
+        width: 100%;
+        text-align: center;
+        margin-top: 10px;
+        padding: 0;
+    }
+
+    .dropdown-content li {
+        margin: 15px 0;
+    }
+    
+    .dropdown-content a {
+        font-size: 1rem;
+        opacity: 0.8; 
+    }
+
+    .dropdown-subtitle {
+        margin-top: 25px;
+        font-size: 1.1rem;
+    }
+
+    .dropdown-divider {
+        display: none;
+    }
+
+    /* --- RESTE DU SITE (GRILLES & COMPOSANTS) --- */
+    
+    .hero-slider {
+        width: 100%;
+        border-radius: 0;
+        margin: 0;
+        aspect-ratio: 4 / 3; /* Un poil plus vertical sur mobile */
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        padding: 0 10px;
+    }
+
+    .feature-overlay {
+        min-width: 80%;
+        padding: 20px 30px;
+    }
+
+    .feature-overlay h2 {
+        font-size: 1.6rem;
+    }
+
+    .product-details-container {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    .shop-controls {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .shop-controls input, 
+    .shop-controls select {
+        width: 100% !important;
+    }
+
+    /* Footer Responsive */
+    .footer-container {
+        flex-direction: column;
+        gap: 40px;
+        text-align: center;
+    }
+
+    .footer-brand {
+        flex: auto;
+    }
+
+    .footer-socials {
+        justify-content: center;
+    }
+
+    .footer-contact h3 {
+        font-size: 1.5rem;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+}
+
+/* Responsive : 2 colonnes sur tablette/mobile */
+@media (max-width: 768px) {
+    .insta-grid { grid-template-columns: repeat(2, 1fr); }
 }
