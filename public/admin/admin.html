@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin | Terraophis</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body class="beige-theme admin-body">
+
+    <nav class="admin-nav">
+        <div class="logo">TERRAOPHIS <span style="font-size: 0.7rem; color: #888;">PANEL ADMIN</span></div>
+        <button id="btnLogout" class="btn-outline">Déconnexion</button>
+    </nav>
+
+    <main class="admin-container">
+        <section class="admin-section">
+            <h2>Ajouter un nouvel insecte</h2>
+            <form id="productForm" class="product-form">
+                <div class="form-group">
+                    <input type="text" name="name" placeholder="Nom commun (ex: Mante Orchidée)" required>
+                    <input type="text" name="latinName" placeholder="Nom latin (ex: Hymenopus coronatus)" required>
+                </div>
+                
+                <div class="form-group">
+                    <input type="number" name="price" placeholder="Prix (€)" step="0.01" required>
+                    <input type="number" name="stock" placeholder="Quantité en stock" required>
+                </div>
+
+                <div class="form-group">
+                    <select name="category" required>
+                        <option value="" disabled selected>Catégorie...</option>
+                        <option value="mantes">Mantes</option>
+                        <option value="cloportes">Cloportes</option>
+                        <option value="phasmes">Phasmes</option>
+                        <option value="accessoires">Accessoires</option>
+                    </select>
+                    <select name="difficulty" required>
+                        <option value="" disabled selected>Difficulté...</option>
+                        <option value="debutant">Débutant</option>
+                        <option value="intermediaire">Intermédiaire</option>
+                        <option value="expert">Expert</option>
+                    </select>
+                </div>
+
+                <textarea name="description" placeholder="Description de l'espèce et conseils d'élevage..." rows="5" required></textarea>
+
+                <div class="file-input-area">
+                    <label for="productFiles">Photos du produit (Max 5)</label>
+                    <input type="file" id="productFiles" multiple accept="image/*" required>
+                </div>
+
+                <button type="submit" id="btnSubmit" class="btn-buy">PUBLIER LE PRODUIT</button>
+                <p id="uploadStatus" style="font-size: 0.8rem; margin-top: 10px;"></p>
+            </form>
+        </section>
+
+        <hr style="border: 0; border-top: 1px solid #ddd; margin: 40px 0;">
+
+        <section class="admin-section">
+            <h2>Inventaire actuel</h2>
+            <div id="adminInventory" class="inventory-list">
+                </div>
+        </section>
+    </main>
+
+    <script type="module" src="admin.js"></script>
+</body>
+</html>

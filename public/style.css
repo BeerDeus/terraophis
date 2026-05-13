@@ -1,0 +1,200 @@
+:root {
+    --primary-beige: #f9f8f2; /* Fond crème clair */
+    --accent-brown: #4a4238;  /* Texte et logo sombre */
+    --soft-white: #ffffff;
+    --border-light: rgba(74, 66, 56, 0.1);
+}
+
+body.beige-theme {
+    margin: 0;
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--primary-beige);
+    color: var(--accent-brown);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Navbar */
+.navbar {
+    background: var(--primary-beige);
+    padding: 20px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 40px;
+}
+
+.main-logo {
+    height: 60px;
+    object-fit: contain;
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    gap: 30px;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--accent-brown);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.nav-links a.active {
+    border-bottom: 2px solid var(--accent-brown);
+}
+
+/* Hero Slider */
+.hero-slider {
+    height: 60vh;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.slide {
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+}
+
+/* Feature Cards (Boutique & Conseil) */
+.features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: -50px; /* Chevauchement sur le hero */
+    position: relative;
+    z-index: 10;
+}
+
+.feature-card {
+    height: 300px;
+    border-radius: 15px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.boutique-card { background-image: url('assets/img/boutique-thumb.jpg'); }
+.conseils-card { background-image: url('assets/img/conseils-thumb.jpg'); }
+
+.feature-overlay {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.btn-feature {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+    padding: 15px 40px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--accent-brown);
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.product-latin {
+    font-style: italic;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 5px;
+    text-transform: capitalize;
+}
+
+.product-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-family: 'Playfair Display', serif;
+}
+
+.product-price {
+    font-weight: 600;
+    color: var(--accent-brown);
+    margin: 10px 0;
+}
+
+/* Login Page */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.login-logo {
+    height: 80px;
+    margin-bottom: 30px;
+}
+
+.login-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(74, 66, 56, 0.05);
+    border: 1px solid var(--border-light);
+}
+
+.login-card h2 {
+    font-family: 'Playfair Display', serif;
+    margin-bottom: 10px;
+}
+
+.login-card p {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 25px;
+}
+
+.login-card input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.error-msg {
+    color: #d9534f;
+    font-size: 0.8rem;
+    margin-top: 15px;
+}
+
+.back-link {
+    display: inline-block;
+    margin-top: 20px;
+    text-decoration: none;
+    color: var(--accent-brown);
+    font-size: 0.8rem;
+    opacity: 0.7;
+}

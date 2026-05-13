@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terraophis | Boutique d'insectes</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+</head>
+<body class="beige-theme">
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo-area">
+                <img src="assets/img/logo_rect.png" alt="Terraophis" class="main-logo">
+            </div>
+            
+            <ul class="nav-links">
+                <li><a href="#home" class="active">ACCUEIL</a></li>
+                <li class="dropdown">
+                    <a href="#boutique">BOUTIQUE ▾</a>
+                </li>
+                <li><a href="#conseils">CONSEILS & GUIDE</a></li>
+                <li><a href="#propos">À PROPOS</a></li>
+            </ul>
+
+            <div class="nav-icons">
+                <a href="#panier" class="cart-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero-slider">
+        <div class="slide active" style="background-image: url('assets/img/hero-sunset.jpg');">
+            <div class="slide-content">
+                <div class="arrows">
+                    <span class="prev">‹</span>
+                    <span class="next">›</span>
+                </div>
+                <div class="dots">
+                    <span class="dot active"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="features-grid">
+            <div class="feature-card boutique-card">
+                <div class="feature-overlay">
+                    <a href="#boutique" class="btn-feature">Boutique</a>
+                </div>
+            </div>
+            <div class="feature-card conseils-card">
+                <div class="feature-overlay">
+                    <a href="#conseils" class="btn-feature">Conseil et Guide</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="boutique" class="products-section">
+            <div id="productGrid" class="product-grid"></div>
+        </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

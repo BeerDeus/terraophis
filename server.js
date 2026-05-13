@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const archiver = require('archiver');
 const nodemailer = require('nodemailer');
 const admin = require('firebase-admin');
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // //////////////////////////////////////////////////
 // 🛡️ MIDDLEWARE DE SÉCURITÉ ADMIN
@@ -77,105 +77,9 @@ const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// NOUVEAU : On exécute la logique S3/Sharp directement en interne sans passer par un fetch HTTP
-async function unlockOrderPhotos(orderId, orderData) {
-    if (!orderData.photos || orderData.photos.length === 0) return;
-    console.log(`⏳ Retrait automatique du filigrane pour ${orderData.photos.length} photos...`);
-
-    // 1. Déblocage physique sur Cloudflare R2
-    try {
-        for (const photo of orderData.photos) {
-            const photoPath = typeof photo === 'string' ? photo : photo.path;
-            let hdKey = photo.hdToken ? `${photoPath}_HD_${photo.hdToken}.jpg` : `${photoPath}_HD.jpg`;
-
-            if (!photo.hdToken) {
-                const listCmd = new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET_NAME, Prefix: `${photoPath}_HD` });
-                const listRes = await s3.send(listCmd);
-                if (listRes.Contents && listRes.Contents.length > 0) hdKey = listRes.Contents[0].Key;
-            }
-
-            const { Body } = await s3.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: hdKey }));
-            
-            const hdBufferArray = await Body.transformToByteArray();
-            const cleanWebBuffer = await sharp(Buffer.from(hdBufferArray))
-                .resize({ width: 1600, withoutEnlargement: true })
-                .jpeg({ quality: 75, mozjpeg: true })
-                .toBuffer();
-
-            await s3.send(new PutObjectCommand({
-                Bucket: process.env.R2_BUCKET_NAME,
-                Key: `${photoPath}_WEB.jpg`,
-                Body: cleanWebBuffer,
-                ContentType: 'image/jpeg'
-            }));
-        }
-    } catch (error) {
-        console.error("Erreur critique lors du nettoyage des filigranes :", error);
-    }
-
-    const paidPaths = orderData.photos.map(p => typeof p === 'string' ? p : p.path);
-
-    // 2. Mise à jour des galeries globales
-    const galleriesSnap = await admin.firestore().collection('galleries').get();
-    for (const galDoc of galleriesSnap.docs) {
-        const galData = galDoc.data();
-        if (galData.photos) {
-            let hasChanges = false;
-            const updatedPhotos = galData.photos.map(p => {
-                const path = typeof p === 'string' ? p : p.path;
-                if (paidPaths.includes(path)) {
-                    hasChanges = true;
-                    return typeof p === 'string' ? { path: path, watermarked: false } : { ...p, watermarked: false };
-                }
-                return p;
-            });
-            if (hasChanges) {
-                await galDoc.ref.update({ photos: updatedPhotos });
-            }
-        }
-    }
-    
-    // 3. Mise à jour du client
-    const userId = orderData.userId;
-    if (userId) {
-        const userRef = admin.firestore().collection('users').doc(userId);
-        const userSnap = await userRef.get();
-        if (userSnap.exists) {
-            const userData = userSnap.data();
-            const userGalleries = userData.galleries || {};
-            let hasChanges = false;
-
-            for (const galId in userGalleries) {
-                const gal = userGalleries[galId];
-                if (gal.photos) {
-                    gal.photos = gal.photos.map(p => {
-                        const path = typeof p === 'string' ? p : p.path;
-                        if (paidPaths.includes(path)) {
-                            hasChanges = true;
-                            return typeof p === 'string' ? { path: path, watermarked: false } : { ...p, watermarked: false };
-                        }
-                        return p;
-                    });
-                }
-            }
-            if (hasChanges) {
-                await userRef.update({ galleries: userGalleries });
-            }
-        }
-    }
-
-    // 4. Mise à jour de la commande
-    const updatedOrderPhotos = orderData.photos.map(p => {
-        if (typeof p === 'string') return { path: p, watermarked: false };
-        return { ...p, watermarked: false }; 
-    });
-    
-    await admin.firestore().collection('orders').doc(orderId).update({ photos: updatedOrderPhotos });
-    console.log("✅ Base de données mise à jour et photos débloquées avec succès !");
-}
 
 // Route Webhook Stripe
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+/*app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
 
@@ -230,54 +134,8 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
         }
     }
     res.json({ received: true });
-});
+});*/
 
-// Route Webhook Stripe
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-        console.error('Erreur de signature Webhook :', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const orderId = session.client_reference_id;
-        const amountPaidThisSession = session.amount_total / 100;
-
-        console.log(`✅ Paiement Stripe validé : ${orderId} (${amountPaidThisSession}€)`);
-
-        try {
-            const orderRef = admin.firestore().collection('orders').doc(orderId);
-            const orderSnap = await orderRef.get();
-            const orderData = orderSnap.data();
-
-            const currentAmountPaid = orderData.amountPaid || 0;
-            const updateObj = { amountPaid: currentAmountPaid + amountPaidThisSession };
-
-            const messageId = session.metadata ? session.metadata.messageId : null;
-            if (messageId) {
-                await orderRef.collection('messages').doc(messageId).update({ status: 'paid' });
-            } else {
-                updateObj.status = 'Payé';
-                updateObj.paymentDate = admin.firestore.FieldValue.serverTimestamp();
-            }
-
-            await orderRef.update(updateObj);
-            
-            // Appel de la fonction de nettoyage
-            await unlockOrderPhotos(orderId, orderData);
-
-        } catch(e) {
-            console.error("Erreur Webhook :", e);
-        }
-    }
-    res.json({ received: true });
-});
 
 // NOUVEAU : Retrait de verifyAdmin pour autoriser les clients à valider leur panier gratuit
 app.post('/api/free-order', async (req, res) => {
@@ -322,7 +180,7 @@ const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 
 // NOUVEAU : Création de la session de paiement
-app.post('/api/create-checkout-session', async (req, res) => {
+/*app.post('/api/create-checkout-session', async (req, res) => {
     try {
         const { orderId, userEmail, messageId } = req.body;
 
@@ -403,74 +261,41 @@ app.post('/api/create-checkout-session', async (req, res) => {
         console.error("Erreur Stripe Checkout :", error.message || error);
         res.status(500).json({ error: "Erreur Stripe : " + (error.message || "Impossible de créer la session.") });
     }
-});
+});*/
 
 // 4. Création d'une route de test
 app.get('/api/ping', (req, res) => {
     res.send('API M2S Photo en ligne ! 🚀');
 });
 
-app.post('/api/upload', verifyAdmin, upload.array('photos', 50), async (req, res) => { 
+app.post('/api/upload', verifyAdmin, upload.array('photos', 5), async (req, res) => { 
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: "Aucun fichier reçu." });
         }
 
-        let folderName = req.body.folderName || 'vrac';
+        let folderName = req.body.folderName || 'products';
         folderName = folderName.replace(/[^a-zA-Z0-9_-]/g, '_');
 
         const uploadPromises = req.files.map(async (file) => {
-            const baseFileName = `m2s-${crypto.randomBytes(6).toString('hex')}`;
-            const basePath = `${folderName}/${baseFileName}`;
-            const hdToken = crypto.randomBytes(4).toString('hex');
+            const fileName = `${Date.now()}-${file.originalname.replace(/\s/g, '_')}`;
+            const basePath = `${folderName}/${fileName}`;
 
-            const hdBuffer = await sharp(file.buffer).rotate().jpeg({ quality: 95 }).toBuffer();
-            const webBaseBuffer = await sharp(hdBuffer).resize({ width: 1600, withoutEnlargement: true }).toBuffer();
-
-            const webMeta = await sharp(webBaseBuffer).metadata();
-            const isPortrait = webMeta.height > webMeta.width;
-
-            const watermarkSize = Math.floor(Math.min(webMeta.width, webMeta.height) / 3);
-            const watermarkBuffer = await sharp('./assets/watermark.png')
-                .resize({ width: watermarkSize, height: watermarkSize, fit: 'inside' })
+            // On garde Sharp uniquement pour optimiser le poids de l'image pour le web
+            const buffer = await sharp(file.buffer)
+                .rotate()
+                .resize({ width: 1200, withoutEnlargement: true })
+                .jpeg({ quality: 80 })
                 .toBuffer();
 
-            // NOUVEAU : Grille de filigranes renforcée pour contrer l'IA
-            const composites = [
-                { input: watermarkBuffer, gravity: 'center' },
-                { input: watermarkBuffer, gravity: 'northwest' },
-                { input: watermarkBuffer, gravity: 'northeast' },
-                { input: watermarkBuffer, gravity: 'southwest' },
-                { input: watermarkBuffer, gravity: 'southeast' }
-            ];
-            
-            if (isPortrait) {
-                composites.push({ input: watermarkBuffer, gravity: 'north' }, { input: watermarkBuffer, gravity: 'south' });
-            } else {
-                composites.push({ input: watermarkBuffer, gravity: 'west' }, { input: watermarkBuffer, gravity: 'east' });
-            }
+            await s3.send(new PutObjectCommand({
+                Bucket: process.env.R2_BUCKET_NAME,
+                Key: basePath,
+                Body: buffer,
+                ContentType: 'image/jpeg'
+            }));
 
-            const webBuffer = await sharp(webBaseBuffer)
-                .composite(composites)
-                .jpeg({ quality: 75, mozjpeg: true })
-                .toBuffer();
-
-            await Promise.all([
-                s3.send(new PutObjectCommand({
-                    Bucket: process.env.R2_BUCKET_NAME,
-                    Key: `${basePath}_WEB.jpg`,
-                    Body: webBuffer,
-                    ContentType: 'image/jpeg'
-                })),
-                s3.send(new PutObjectCommand({
-                    Bucket: process.env.R2_BUCKET_NAME,
-                    Key: `${basePath}_HD_${hdToken}.jpg`,
-                    Body: hdBuffer,
-                    ContentType: 'image/jpeg'
-                }))
-            ]);
-
-            return { path: basePath, hdToken: hdToken };
+            return { url: `${process.env.R2_PUBLIC_URL}/${basePath}`, path: basePath };
         });
 
         const uploadedData = await Promise.all(uploadPromises);
@@ -478,93 +303,7 @@ app.post('/api/upload', verifyAdmin, upload.array('photos', 50), async (req, res
 
     } catch (error) {
         console.error("Erreur d'upload :", error);
-        res.status(500).json({ error: "Erreur lors du traitement des images." });
-    }
-});
-
-// Route pour écraser la version WEB par une version HD sans filigrane
-app.post('/api/remove-watermark', verifyAdmin, async (req, res) => {
-    try {
-        const { photos } = req.body; 
-        if (!photos || photos.length === 0) return res.status(400).json({ error: "Aucune photo fournie" });
-
-        for (const photo of photos) {
-            const photoPath = typeof photo === 'string' ? photo : photo.path;
-            let hdKey = photo.hdToken ? `${photoPath}_HD_${photo.hdToken}.jpg` : `${photoPath}_HD.jpg`;
-
-            // NOUVEAU : Fallback de sécurité si le hdToken est introuvable
-            if (!photo.hdToken) {
-                const listCmd = new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET_NAME, Prefix: `${photoPath}_HD` });
-                const listRes = await s3.send(listCmd);
-                if (listRes.Contents && listRes.Contents.length > 0) hdKey = listRes.Contents[0].Key;
-            }
-
-            const { Body } = await s3.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: hdKey }));
-            
-            const hdBufferArray = await Body.transformToByteArray();
-            const cleanWebBuffer = await sharp(Buffer.from(hdBufferArray))
-                .resize({ width: 1600, withoutEnlargement: true })
-                .jpeg({ quality: 75, mozjpeg: true })
-                .toBuffer();
-
-            await s3.send(new PutObjectCommand({
-                Bucket: process.env.R2_BUCKET_NAME,
-                Key: `${photoPath}_WEB.jpg`,
-                Body: cleanWebBuffer,
-                ContentType: 'image/jpeg'
-            }));
-        }
-        res.status(200).json({ message: "Watermarks retirés avec succès" });
-    } catch (error) {
-        console.error("Erreur suppression watermark :", error);
-        res.status(500).json({ error: "Erreur lors de l'opération" });
-    }
-});
-
-// Route pour RESTAURER le filigrane (Génère une nouvelle version WEB avec watermark)
-app.post('/api/restore-watermark', verifyAdmin, async (req, res) => {
-    try {
-        const { photos } = req.body;
-        if (!photos || photos.length === 0) return res.status(400).json({ error: "Aucune photo fournie" });
-
-        for (const photo of photos) {
-            const photoPath = typeof photo === 'string' ? photo : photo.path;
-            let hdKey = photo.hdToken ? `${photoPath}_HD_${photo.hdToken}.jpg` : `${photoPath}_HD.jpg`;
-
-            // NOUVEAU : Fallback de sécurité si le hdToken est introuvable
-            if (!photo.hdToken) {
-                const listCmd = new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET_NAME, Prefix: `${photoPath}_HD` });
-                const listRes = await s3.send(listCmd);
-                if (listRes.Contents && listRes.Contents.length > 0) hdKey = listRes.Contents[0].Key;
-            }
-
-            const { Body } = await s3.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: hdKey }));
-            
-            const hdBufferArray = await Body.transformToByteArray();
-            const webBaseBuffer = await sharp(Buffer.from(hdBufferArray)).resize({ width: 1600, withoutEnlargement: true }).toBuffer();
-            const webMeta = await sharp(webBaseBuffer).metadata();
-            const isPortrait = webMeta.height > webMeta.width;
-
-            const watermarkSize = Math.floor(Math.min(webMeta.width, webMeta.height) / 3);
-            const watermarkBuffer = await sharp('./assets/watermark.png')
-                .resize({ width: watermarkSize, height: watermarkSize, fit: 'inside' }).toBuffer();
-
-            const composites = [
-                { input: watermarkBuffer, gravity: 'center' }, { input: watermarkBuffer, gravity: 'northwest' },
-                { input: watermarkBuffer, gravity: 'northeast' }, { input: watermarkBuffer, gravity: 'southwest' },
-                { input: watermarkBuffer, gravity: 'southeast' }
-            ];
-            if (isPortrait) composites.push({ input: watermarkBuffer, gravity: 'north' }, { input: watermarkBuffer, gravity: 'south' });
-            else composites.push({ input: watermarkBuffer, gravity: 'west' }, { input: watermarkBuffer, gravity: 'east' });
-
-            const webBuffer = await sharp(webBaseBuffer).composite(composites).jpeg({ quality: 75, mozjpeg: true }).toBuffer();
-
-            await s3.send(new PutObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: `${photoPath}_WEB.jpg`, Body: webBuffer, ContentType: 'image/jpeg' }));
-        }
-        res.status(200).json({ message: "Watermarks restaurés avec succès" });
-    } catch (error) {
-        console.error("Erreur restauration watermark :", error);
-        res.status(500).json({ error: "Erreur lors de l'opération" });
+        res.status(500).json({ error: "Erreur lors de l'upload des images." });
     }
 });
 
@@ -584,40 +323,6 @@ app.post('/api/delete', verifyAdmin, async (req, res) => {
     } catch (error) {
         console.error("Erreur suppression Cloudflare :", error);
         res.status(500).json({ error: "Erreur lors de la suppression sur les serveurs" });
-    }
-});
-
-// NOUVEAU : Route pour générer et télécharger un ZIP
-app.post('/api/download-zip', async (req, res) => {
-    try {
-        const { photos } = req.body;
-        if (!photos || photos.length === 0) return res.status(400).json({ error: "Aucune photo sélectionnée" });
-
-        res.attachment('M2S_Galerie_HD.zip');
-        const archive = archiver('zip', { zlib: { level: 5 } }); 
-        
-        archive.on('error', (err) => { throw err; });
-        archive.pipe(res);
-
-        for (const photo of photos) {
-            const photoPath = typeof photo === 'string' ? photo : photo.path;
-            let hdKey = photo.hdToken ? `${photoPath}_HD_${photo.hdToken}.jpg` : `${photoPath}_HD.jpg`;
-
-            // NOUVEAU : Fallback de sécurité si le hdToken est introuvable
-            if (!photo.hdToken) {
-                const listCmd = new ListObjectsV2Command({ Bucket: process.env.R2_BUCKET_NAME, Prefix: `${photoPath}_HD` });
-                const listRes = await s3.send(listCmd);
-                if (listRes.Contents && listRes.Contents.length > 0) hdKey = listRes.Contents[0].Key;
-            }
-
-            const { Body } = await s3.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET_NAME, Key: hdKey }));
-            archive.append(Body, { name: `M2S_${photoPath.split('/').pop()}.jpg` });
-        }
-
-        await archive.finalize();
-    } catch (error) {
-        console.error("Erreur ZIP :", error);
-        if (!res.headersSent) res.status(500).json({ error: "Erreur lors de la création du ZIP" });
     }
 });
 
