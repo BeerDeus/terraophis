@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const archiver = require('archiver');
 const nodemailer = require('nodemailer');
 const admin = require('firebase-admin');
-// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // //////////////////////////////////////////////////
 // 🛡️ MIDDLEWARE DE SÉCURITÉ ADMIN
@@ -135,6 +135,70 @@ const PORT = process.env.PORT || 3000;
     }
     res.json({ received: true });
 });*/
+
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        console.error('Erreur de signature Webhook :', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const orderId = session.client_reference_id;
+        const amountPaidThisSession = session.amount_total / 100;
+
+        console.log(`✅ Paiement Stripe validé pour la commande : ${orderId} (${amountPaidThisSession}€)`);
+
+        try {
+            const orderRef = admin.firestore().collection('orders').doc(orderId);
+            const orderSnap = await orderRef.get();
+            
+            if (orderSnap.exists) {
+                const orderData = orderSnap.data();
+                if (orderData.items && orderData.items.length > 0) {
+                    const batch = admin.firestore().batch();
+                    for (const item of orderData.items) {
+                        const productRef = admin.firestore().collection('products').doc(item.id);
+                        batch.update(productRef, {
+                            stock: admin.firestore.FieldValue.increment(-item.quantity)
+                        });
+                    }
+                    await batch.commit();
+                    console.log(`📦 Stocks déduits avec succès pour la commande ${orderId}`);
+                }
+            }
+
+            // NOUVEAU : Extraction sécurisée des détails de livraison et de contact client
+            const shipping = session.shipping_details;
+            const customer = session.customer_details;
+
+            await orderRef.update({
+                status: 'Payé',
+                amountPaid: amountPaidThisSession,
+                paymentDate: admin.firestore.FieldValue.serverTimestamp(),
+                // Stockage des informations acheteur
+                customerEmail: customer?.email || 'Non renseigné',
+                customerName: shipping?.name || customer?.name || 'Inconnu',
+                shippingAddress: shipping ? {
+                    line1: shipping.address.line1,
+                    line2: shipping.address.line2 || '',
+                    city: shipping.address.city,
+                    postalCode: shipping.address.postal_code,
+                    country: shipping.address.country
+                } : null
+            });
+
+        } catch(e) {
+            console.error("Erreur lors du traitement Firestore du Webhook :", e);
+        }
+    }
+    res.json({ received: true });
+});
 
 
 // NOUVEAU : Retrait de verifyAdmin pour autoriser les clients à valider leur panier gratuit
@@ -266,6 +330,71 @@ app.get('/produit', (req, res) => {
         res.status(500).json({ error: "Erreur Stripe : " + (error.message || "Impossible de créer la session.") });
     }
 });*/
+
+app.post('/api/create-checkout-session', async (req, res) => {
+    try {
+        const { orderId, userEmail } = req.body;
+
+        if (!orderId) {
+            return res.status(400).json({ error: "Paramètre manquant (orderId)." });
+        }
+
+        const orderRef = admin.firestore().collection('orders').doc(orderId);
+        const orderSnap = await orderRef.get();
+        
+        if (!orderSnap.exists) {
+            return res.status(404).json({ error: "Commande introuvable." });
+        }
+        
+        const orderData = orderSnap.data();
+        const amountToPay = orderData.amountValue || 0;
+        
+        if (amountToPay <= 0) {
+            return res.status(400).json({ error: "Aucun montant à régler pour cette commande." });
+        }
+
+        let clientUrl = process.env.CLIENT_URL || req.headers.origin || 'http://localhost:3000';
+        if (clientUrl.endsWith('/')) {
+            clientUrl = clientUrl.slice(0, -1);
+        }
+
+        const sessionConfig = {
+            payment_method_types: ['card'],
+            client_reference_id: String(orderId),
+            // NOUVEAU : Activation de la collecte obligatoire de l'adresse de livraison
+            shipping_address_collection: {
+                allowed_countries: ['FR', 'BE', 'CH', 'LU'],
+            },
+            line_items: [
+                {
+                    price_data: {
+                        currency: 'eur',
+                        product_data: {
+                            name: `Commande Terraophis #${String(orderId).slice(0,6).toUpperCase()}`,
+                            description: 'Votre sélection d\'arthropodes et matériels d\'élevage'
+                        },
+                        unit_amount: Math.round(parseFloat(amountToPay) * 100), 
+                    },
+                    quantity: 1,
+                },
+            ],
+            mode: 'payment',
+            success_url: `${clientUrl}/confirmation.html?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${clientUrl}/`,
+        };
+
+        if (userEmail) {
+            sessionConfig.customer_email = userEmail;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+
+        res.status(200).json({ url: session.url });
+    } catch (error) {
+        console.error("Erreur Stripe Checkout :", error.message || error);
+        res.status(500).json({ error: "Erreur Stripe : " + (error.message || "Impossible de créer la session de paiement.") });
+    }
+});
 
 // 4. Création d'une route de test
 app.get('/api/ping', (req, res) => {

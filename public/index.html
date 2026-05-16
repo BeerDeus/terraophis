@@ -57,13 +57,34 @@
                 <h2>Galerie Instagram</h2>
                 <a href="https://www.instagram.com/terra.ophis" target="_blank" class="insta-handle">@TERRAOPHIS</a>
             </div>
-            <div id="instafeed" class="insta-grid">
-                <div class="insta-placeholder">Chargement du flux...</div>
-            </div>
+            
+            <behold-widget feed-id="bQNZ6B9W6XDxHhcLbFA7"></behold-widget>
         </section>
     </main>
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h2>Votre Panier</h2>
+            <button class="close-cart" onclick="toggleCart()">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItemsContainer">
+            </div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total (hors frais de port)</span>
+                <span id="cartTotalAmount">0.00 €</span>
+            </div>
+            <button class="btn-checkout" id="btnCheckout" onclick="processCheckout()">VALIDER LA COMMANDE</button>
+        </div>
+    </div>
     <footer id="main-footer"></footer>
 
+    <script>
+      (() => {
+        const d=document,s=d.createElement("script");s.type="module";
+        s.src="https://w.behold.so/widget.js";d.head.append(s);
+      })();
+    </script>
     <script type="module" src="app.js"></script>
 </body>
 </html>

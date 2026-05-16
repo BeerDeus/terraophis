@@ -211,38 +211,82 @@ window.deleteProduct = async (id) => {
 // NOUVEAU : Fonction pour récupérer et afficher les commandes
 async function loadOrders() {
     const container = document.getElementById('adminOrders');
+    if (!container) return;
     container.innerHTML = '<p>Chargement des commandes...</p>';
     
-    // On récupère les commandes de la plus récente à la plus ancienne
-    const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    
-    container.innerHTML = '';
-    
-    if (snap.empty) {
-        container.innerHTML = '<p>Aucune commande pour le moment.</p>';
-        return;
-    }
-
-    snap.forEach(orderDoc => {
-        const order = orderDoc.data();
-        const div = document.createElement('div');
-        div.className = 'inventory-item';
-        div.style.cssText = "display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #ddd; align-items:center;";
+    try {
+        const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
         
-        div.innerHTML = `
-            <div>
-                <strong>Client:</strong> ${order.customerEmail || 'Anonyme'} <br>
-                <span style="font-size: 0.8rem; color: #666;">Total: ${order.amountPaid || order.amountValue || 0}€ | Statut actuel: <strong>${order.status || 'Payé'}</strong></span>
-            </div>
-            <select onchange="updateOrderStatus('${orderDoc.id}', this.value)" style="padding: 5px; font-size: 0.8rem;">
-                <option value="Payé" ${order.status === 'Payé' ? 'selected' : ''}>Payé (À préparer)</option>
-                <option value="En préparation" ${order.status === 'En préparation' ? 'selected' : ''}>En préparation</option>
-                <option value="Expédié" ${order.status === 'Expédié' ? 'selected' : ''}>Expédié</option>
-            </select>
-        `;
-        container.appendChild(div);
-    });
+        container.innerHTML = '';
+        
+        if (snap.empty) {
+            container.innerHTML = '<p>Aucune commande pour le moment.</p>';
+            return;
+        }
+
+        // NOUVEAU : Boucle asynchrone pour traiter et afficher chaque commande de façon détaillée
+        for (const orderDoc of snap.docs) {
+            const order = orderDoc.data();
+            const orderId = orderDoc.id;
+            const dateObj = order.createdAt?.toDate() ? order.createdAt.toDate().toLocaleDateString('fr-FR', {hour: '2-digit', minute:'2-digit'}) : 'Date inconnue';
+
+            // Récupération des noms des produits du panier
+            let itemsHtml = '';
+            if (order.items && order.items.length > 0) {
+                for (const item of order.items) {
+                    const prodSnap = await getDoc(doc(db, "products", item.id));
+                    const prodName = prodSnap.exists() ? prodSnap.data().name : "Spécimen supprimé";
+                    itemsHtml += `<li><strong>x${item.quantity}</strong> - ${prodName}</li>`;
+                }
+            }
+
+            // Formatage de l'adresse de livraison si elle existe
+            let addressHtml = '<em>Pas d\'adresse (Paiement incomplet ou service)</em>';
+            if (order.shippingAddress) {
+                const addr = order.shippingAddress;
+                addressHtml = `
+                    ${order.customerName}<br>
+                    ${addr.line1} ${addr.line2 ? '<br>' + addr.line2 : ''}<br>
+                    ${addr.postalCode} ${addr.city}, ${addr.country}
+                `;
+            }
+
+            const div = document.createElement('div');
+            div.className = 'order-card'; // Changement de classe pour appliquer un style de carte isolée
+            
+            div.innerHTML = `
+                <div class="order-card-header">
+                    <div>
+                        <span class="order-id">CMD #${orderId.slice(0,6).toUpperCase()}</span>
+                        <span class="order-date">${dateObj}</span>
+                    </div>
+                    <select onchange="updateOrderStatus('${orderId}', this.value)" class="status-select">
+                        <option value="En attente de paiement" ${order.status === 'En attente de paiement' ? 'selected' : ''}>En attente</option>
+                        <option value="Payé" ${order.status === 'Payé' ? 'selected' : ''}>Payé (À préparer)</option>
+                        <option value="En préparation" ${order.status === 'En preparation' ? 'selected' : ''}>En préparation</option>
+                        <option value="Expédié" ${order.status === 'Expédié' ? 'selected' : ''}>Expédié</option>
+                    </select>
+                </div>
+                <div class="order-card-body">
+                    <div class="order-col">
+                        <h4>Contenu du colis :</h4>
+                        <ul>${itemsHtml}</ul>
+                        <p class="order-price-total">Montant total : <strong>${order.amountValue || 0} €</strong></p>
+                    </div>
+                    <div class="order-col">
+                        <h4>Adresse de livraison :</h4>
+                        <p class="order-address-text">${addressHtml}</p>
+                        <p class="order-contact-email">✉️ ${order.customerEmail || 'Anonyme'}</p>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    } catch (error) {
+        console.error("Erreur de chargement du tableau des commandes :", error);
+        container.innerHTML = '<p>Erreur lors du chargement des informations.</p>';
+    }
 }
 
 // NOUVEAU : Fonction pour mettre à jour le statut en base de données
@@ -398,16 +442,24 @@ async function loadSliderPreview() {
         if (docSnap.exists() && docSnap.data().photos?.length > 0) {
             const photos = docSnap.data().photos;
             preview.innerHTML = '';
-            photos.forEach((url, index) => {
+            photos.forEach((photoData, index) => {
+                const isObject = typeof photoData === 'object' && photoData !== null;
+                const url = isObject ? photoData.url : photoData;
+                
                 const div = document.createElement('div');
-                div.className = 'preview-item';
+                // NOUVEAU : Alignement horizontal avec flèches aux extrémités
+                div.style.cssText = "display: flex; align-items: center; gap: 8px; background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);";
+                
                 div.innerHTML = `
-                    <img src="${url}">
-                    <div class="preview-controls">
-                        <button onclick="moveSlider(${index}, -1)" class="btn-outline" ${index === 0 ? 'disabled' : ''}>←</button>
-                        <button onclick="deleteSliderImg(${index})" class="btn-delete-img">×</button>
-                        <button onclick="moveSlider(${index}, 1)" class="btn-outline" ${index === photos.length - 1 ? 'disabled' : ''}>→</button>
+                    <button onclick="moveSlider(${index}, -1)" class="btn-outline" style="padding: 2px 8px; font-size: 1rem; height: 30px; border: none; background: #f0f0f0; cursor: pointer;" ${index === 0 ? 'disabled' : ''}>‹</button>
+                    
+                    <div style="position: relative; width: 120px; height: 80px;">
+                        <img src="${url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">
+                        <button onclick="deleteSliderImg(${index})" class="btn-delete-img" style="position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">×</button>
+                        <button onclick="openSliderModal(${index})" style="position: absolute; bottom: -8px; right: -8px; background: #6d8c6d; color: white; border: none; border-radius: 50%; width: 26px; height: 26px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">✎</button>
                     </div>
+                    
+                    <button onclick="moveSlider(${index}, 1)" class="btn-outline" style="padding: 2px 8px; font-size: 1rem; height: 30px; border: none; background: #f0f0f0; cursor: pointer;" ${index === photos.length - 1 ? 'disabled' : ''}>›</button>
                 `;
                 preview.appendChild(div);
             });
@@ -417,29 +469,42 @@ async function loadSliderPreview() {
     } catch (e) { console.error(e); }
 }
 
-window.deleteSliderImg = async (index) => {
-    if (!confirm("Supprimer cette image ?")) return;
+// NOUVEAU: Logique de la modale Slider
+window.openSliderModal = async (index) => {
+    const docSnap = await getDoc(doc(db, "settings", "heroSlider"));
+    const photos = docSnap.data().photos;
+    const photoData = photos[index];
+    
+    document.getElementById('modalSlideIndex').value = index;
+    // Si c'est un objet, on charge ses données, sinon c'est vide
+    document.getElementById('modalSlideLink').value = photoData.link || '';
+    document.getElementById('modalSlideText').value = photoData.text || '';
+    
+    document.getElementById('sliderModal').style.display = 'flex';
+};
+
+window.closeSliderModal = () => {
+    document.getElementById('sliderModal').style.display = 'none';
+};
+
+document.getElementById('sliderModalForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const index = document.getElementById('modalSlideIndex').value;
+    const link = document.getElementById('modalSlideLink').value;
+    const text = document.getElementById('modalSlideText').value;
+    
     const docRef = doc(db, "settings", "heroSlider");
     const docSnap = await getDoc(docRef);
     const photos = docSnap.data().photos;
-    photos.splice(index, 1);
+    
+    const url = typeof photos[index] === 'string' ? photos[index] : photos[index].url;
+    photos[index] = { url, link, text }; // On met à jour avec l'objet formaté
+    
     await updateDoc(docRef, { photos });
+    closeSliderModal();
     loadSliderPreview();
-};
+});
 
-window.moveSlider = async (index, direction) => {
-    const docRef = doc(db, "settings", "heroSlider");
-    const docSnap = await getDoc(docRef);
-    const photos = [...docSnap.data().photos];
-    const newIndex = index + direction;
-    [photos[index], photos[newIndex]] = [photos[newIndex], photos[index]];
-    await updateDoc(docRef, { photos });
-    loadSliderPreview();
-};
-
-/**
- * Gère l'upload et l'ajout (push) de nouvelles images au slider existant
- */
 if(sliderForm) {
     sliderForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -463,15 +528,16 @@ if(sliderForm) {
 
             if (!response.ok) throw new Error("Échec de l'upload");
             const { files: uploadedFiles } = await response.json();
-            const newUrls = uploadedFiles.map(f => f.url);
+            
+            // NOUVEAU: Stockage sous forme d'objet avec texte et lien vides
+            const newPhotos = uploadedFiles.map(f => ({ url: f.url, text: '', link: '' }));
 
-            // On récupère les anciennes photos pour ajouter les nouvelles à la suite
             const docRef = doc(db, "settings", "heroSlider");
             const docSnap = await getDoc(docRef);
-            let finalPhotos = newUrls;
+            let finalPhotos = newPhotos;
 
             if (docSnap.exists() && docSnap.data().photos) {
-                finalPhotos = [...docSnap.data().photos, ...newUrls];
+                finalPhotos = [...docSnap.data().photos, ...newPhotos];
             }
 
             await setDoc(docRef, {
@@ -490,17 +556,24 @@ if(sliderForm) {
     });
 }
 
-async function handleGridUpload(type, files, statusId, previewId) {
+// NOUVEAU: Logique d'upload individuel pour les grilles
+async function handleGridUpload(type, files, statusId) {
     const status = document.getElementById(statusId);
-    if (files.length !== 4) {
-        status.textContent = "❌ Veuillez sélectionner exactement 4 images.";
-        return;
-    }
+    if (files.length === 0) return;
 
     try {
-        status.textContent = "Upload des 4 images... ⏳";
+        status.textContent = "Upload de l'image... ⏳";
+        const docRef = doc(db, "settings", "featureGrid");
+        const docSnap = await getDoc(docRef);
+        let currentGrid = docSnap.exists() && docSnap.data()[type] ? docSnap.data()[type] : [];
+
+        if (currentGrid.length >= 4) {
+            status.textContent = "❌ Limite de 4 images atteinte. Supprimez-en une d'abord.";
+            return;
+        }
+
         const uploadData = new FormData();
-        for (let i = 0; i < 4; i++) { uploadData.append('photos', files[i]); }
+        uploadData.append('photos', files[0]); // Un seul fichier ajouté à la fois
         
         const token = await auth.currentUser.getIdToken();
         const response = await fetch('/api/upload', {
@@ -510,11 +583,12 @@ async function handleGridUpload(type, files, statusId, previewId) {
         });
 
         const { files: uploadedFiles } = await response.json();
-        const urls = uploadedFiles.map(f => f.url);
+        currentGrid.push(uploadedFiles[0].url);
 
-        await setDoc(doc(db, "settings", "featureGrid"), { [type]: urls }, { merge: true });
+        await setDoc(docRef, { [type]: currentGrid }, { merge: true });
         
-        status.textContent = "✅ Grille mise à jour !";
+        status.textContent = "✅ Image ajoutée !";
+        document.getElementById(`${type}GridForm`).reset();
         loadGridPreviews();
     } catch (err) {
         status.textContent = "❌ Erreur : " + err.message;
@@ -523,12 +597,12 @@ async function handleGridUpload(type, files, statusId, previewId) {
 
 document.getElementById('boutiqueGridForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    handleGridUpload('boutique', document.getElementById('boutiqueFiles').files, 'uploadStatus', 'boutiquePreview');
+    handleGridUpload('boutique', document.getElementById('boutiqueFiles').files, 'boutiqueUploadStatus');
 });
 
 document.getElementById('conseilGridForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    handleGridUpload('conseil', document.getElementById('conseilFiles').files, 'uploadStatus', 'conseilPreview');
+    handleGridUpload('conseil', document.getElementById('conseilFiles').files, 'conseilUploadStatus');
 });
 
 async function loadGridPreviews() {
@@ -536,13 +610,45 @@ async function loadGridPreviews() {
     if (!docSnap.exists()) return;
     const data = docSnap.data();
 
-    const updatePreview = (id, urls) => {
+    const renderGridControls = (id, type, urls) => {
         const el = document.getElementById(id);
         if (el && urls) {
-            el.innerHTML = urls.map(url => `<div class="preview-item"><img src="${url}"></div>`).join('');
+            el.innerHTML = urls.map((url, index) => `
+                <div class="preview-item">
+                    <img src="${url}">
+                    <div class="preview-controls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px; gap: 2px;">
+                        <button onclick="moveGridImg('${type}', ${index}, -1)" style="padding: 2px 6px; font-size: 0.9rem; height: 24px; border: none; background: #f0f0f0; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px;" ${index === 0 ? 'disabled' : ''}>‹</button>
+                        
+                        <button onclick="deleteGridImg('${type}', ${index})" class="btn-delete-img">×</button>
+                        
+                        <button onclick="moveGridImg('${type}', ${index}, 1)" style="padding: 2px 6px; font-size: 0.9rem; height: 24px; border: none; background: #f0f0f0; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px;" ${index === urls.length - 1 ? 'disabled' : ''}>›</button>
+                    </div>
+                </div>
+            `).join('');
         }
     };
 
-    updatePreview('boutiquePreview', data.boutique);
-    updatePreview('conseilPreview', data.conseil);
+    renderGridControls('boutiquePreview', 'boutique', data.boutique);
+    renderGridControls('conseilPreview', 'conseil', data.conseil);
 }
+
+// NOUVEAU: Fonctions de déplacement et de suppression de la grille
+window.deleteGridImg = async (type, index) => {
+    if (!confirm("Supprimer cette image de la grille ?")) return;
+    const docRef = doc(db, "settings", "featureGrid");
+    const docSnap = await getDoc(docRef);
+    const grid = docSnap.data()[type];
+    grid.splice(index, 1);
+    await updateDoc(docRef, { [type]: grid });
+    loadGridPreviews();
+};
+
+window.moveGridImg = async (type, index, direction) => {
+    const docRef = doc(db, "settings", "featureGrid");
+    const docSnap = await getDoc(docRef);
+    const grid = [...docSnap.data()[type]];
+    const newIndex = index + direction;
+    [grid[index], grid[newIndex]] = [grid[newIndex], grid[index]];
+    await updateDoc(docRef, { [type]: grid });
+    loadGridPreviews();
+};
