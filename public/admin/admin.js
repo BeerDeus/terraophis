@@ -2,7 +2,7 @@ import { db, auth } from '../firebase-config.js';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc, serverTimestamp, query, orderBy, increment, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const ADMIN_EMAIL = "martin.stuis11@gmail.com";
+const ADMIN_EMAILS = ["martin.stuis11@gmail.com", "terra.ophis@gmail.com"];
 const PLACEHOLDER_IMG = '/assets/img/logo_carre.png';
 const LOW_STOCK = 2; // Seuil d'alerte "stock faible"
 const MAX_PHOTOS = 5;
@@ -79,7 +79,7 @@ onAuthStateChanged(auth, (user) => {
         window.location.href = "/login";
         return;
     }
-    if (user.email !== ADMIN_EMAIL) {
+    if (!ADMIN_EMAILS.includes(user.email)) {
         console.warn("Accès refusé pour :", user.email);
         window.location.href = "/login?error=forbidden";
         return;

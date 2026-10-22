@@ -11,7 +11,7 @@ const nodemailer = require('nodemailer');
 const admin = require('firebase-admin');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const ADMIN_EMAIL = "martin.stuis11@gmail.com";
+const ADMIN_EMAILS = ["martin.stuis11@gmail.com", "terra.ophis@gmail.com"];
 
 // //////////////////////////////////////////////////
 // 🛡️ MIDDLEWARE DE SÉCURITÉ ADMIN
@@ -31,7 +31,7 @@ const verifyAdmin = async (req, res, next) => {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
 
         // 4. VÉRIFICATION ULTIME : Est-ce que c'est bien l'administrateur ?
-        if (decodedToken.email !== ADMIN_EMAIL) {
+        if (!ADMIN_EMAILS.includes(decodedToken.email)) {
             console.warn(`Tentative d'accès non autorisé par : ${decodedToken.email}`);
             return res.status(403).json({ error: "Accès interdit : Droits administrateur requis." });
         }
