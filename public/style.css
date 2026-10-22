@@ -133,7 +133,6 @@ body.beige-theme {
     font-size: 0.8rem;
     color: #888;
     margin-bottom: 5px;
-    text-transform: capitalize;
 }
 
 .product-name {
@@ -146,6 +145,106 @@ body.beige-theme {
     font-weight: 600;
     color: var(--accent-brown);
     margin: 10px 0;
+}
+
+.price-old {
+    font-weight: 400;
+    color: #999;
+    margin-right: 6px;
+}
+
+.price-sale { color: #a35d5d; }
+
+.product-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    background: #a35d5d;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.btn-buy {
+    width: 100%;
+    background: var(--accent-brown);
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-buy:hover { opacity: 0.9; }
+
+.btn-buy:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+/* Fiches conseils (accueil) */
+.guides-section { margin: 60px 0; scroll-margin-top: 120px; /* Navbar sticky */ }
+
+.guides-section > h2 {
+    font-family: 'Playfair Display', serif;
+    text-align: center;
+    font-size: 2rem;
+}
+
+.guides-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.guide-card {
+    background: #fff;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.guide-card summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.guide-card summary::-webkit-details-marker { display: none; }
+
+.guide-card img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+}
+
+.guide-card h3 {
+    font-family: 'Playfair Display', serif;
+    margin: 15px 20px 5px;
+}
+
+.guide-more {
+    display: block;
+    margin: 0 20px 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #586d32;
+}
+
+.guide-card[open] .guide-more { display: none; }
+
+.guide-content {
+    padding: 0 20px 20px;
+    line-height: 1.6;
 }
 
 /* Login Page */

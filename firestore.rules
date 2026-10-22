@@ -1,0 +1,31 @@
+// Règles de sécurité Firestore recommandées pour Terraophis.
+// À copier dans la console Firebase > Firestore Database > Règles, puis "Publier".
+//
+// - Catalogue, réglages d'affichage et guides : lisibles par tous, modifiables par l'admin.
+// - Commandes : réservées à l'admin. Elles sont créées et validées par le serveur
+//   (firebase-admin ignore ces règles), ce qui empêche un client de lire les adresses
+//   des autres acheteurs ou de fabriquer une commande à 0 €.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "martin.stuis11@gmail.com";
+    }
+
+    match /products/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /guides/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /orders/{id} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
